@@ -1,0 +1,48 @@
+# Qt Creator / qmake
+*.pro.user
+*.pro.user.*
+*.qbs.user
+*.qbs.user.*
+.qmake.stash
+
+# Qt의 자동 생성 파일들
+moc_*.cpp
+qrc_*.cpp
+ui_*.h
+*.qm
+
+# 빌드 디렉터리(이름 다 커버)
+build/
+build-*/
+out/
+bin/
+debug/
+release/
+
+# 컴파일 산출물
+*.o
+*.obj
+*.a
+*.la
+*.lo
+*.lib
+*.dll
+*.so*
+*.dylib
+*.exe
+*.pdb
+*.ilk
+*.idb
+*.dSYM/
+
+# 기타 IDE/OS
+*.user
+*.log
+*.cache
+*.tmp
+*.swp
+.DS_Store
+.vscode/
+.idea/
+.vs/
+.qt/
