@@ -40,7 +40,10 @@ void MainWindow::newConnection()
     connect(client, &QTcpSocket::readyRead, this, &MainWindow::readyRead);
     connect(client, &QTcpSocket::disconnected, this, &MainWindow::disconnected);
 
+
+
     // 추가할 내용
+    // USERID 중복 걸러내기(필수) + 모든 주고받는 통신에 checksum 확인과 ack or nack 추가하기.
     // 여기에 클라이언트 정보 받아서 사용자 목록에 추가 + 접속중인 사용자에게 목록 전송 (브로드캐스트)
     //
 
@@ -62,7 +65,7 @@ void MainWindow::readyRead()
 
     // 추가할 내용
     // 받은데이터 로그에 남기기(ui 표시 + 해당 날짜 폴더에 로그 기록하기
-    // 채팅 메세지와 connect연결 0x01 과 0x12로 구분해서 처리하면 될듯? 첫 패킷만 뜯어서 switch case 사용?
+    // 채팅 메세지와 connect연결 0x01 과 0x12로 구분해서 처리하면 될듯? CMD 패킷만 뜯어서 switch case 사용?
     //
 
 
