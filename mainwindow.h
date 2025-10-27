@@ -26,8 +26,6 @@ public:
     void sendToAll(const QByteArray& msg);
     bool sendTo(QTcpSocket* client, const QByteArray& msg);
 
-
-
 private:
     Ui::MainWindow *ui = nullptr;
 
@@ -41,6 +39,7 @@ private:
     bool startServer(const QString& ip, quint16 port);
     void stopServer();
     void writeLog(quint8 cmd, QString data, const QString& filePath, QString clientIp, QString clientPort);
+    QString logFilePath;
 
 signals:
     void started(int port);
@@ -50,14 +49,11 @@ signals:
     void messageReceived(QTcpSocket* client, const QByteArray& line);
     void errorOccurred(const QString& err);
 
-
-
 private slots:
     void newConnection();
     void readyRead();
     void disconnected();
     // void onSocketError(QAbstractSocket::SocketError);
-
 
 };
 #endif // MAINWINDOW_H

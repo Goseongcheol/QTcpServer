@@ -40,7 +40,6 @@ int main(int argc, char *argv[])
         //error 처리
     }
 
-
     // 실행 경로의 config.ini 파일 읽어오기
     QSettings settings("config.ini", QSettings::IniFormat);
     settings.beginGroup("SERVER");

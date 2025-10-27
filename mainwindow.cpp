@@ -12,6 +12,8 @@ MainWindow::MainWindow(const QString& ip, quint16 port, const QString& filePath,
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+    logFilePath = filePath;
+
     server = new QTcpServer(this);
 
     connect(server, &QTcpServer::newConnection, this, &MainWindow::newConnection);
@@ -23,15 +25,11 @@ MainWindow::MainWindow(const QString& ip, quint16 port, const QString& filePath,
     }
 }
 
-
-
-
 MainWindow::~MainWindow()
 {
     delete ui;
     server->close();
 }
-
 
 // 새 클라이언트 접속 처리
 void MainWindow::newConnection()
@@ -47,8 +45,7 @@ void MainWindow::newConnection()
     // 여기에 클라이언트 정보 받아서 사용자 목록에 추가 + 접속중인 사용자에게 목록 전송 (브로드캐스트)
     //
 
-    qDebug() << "Client connected from"
-             << client->peerAddress().toString() << ":" << client->peerPort();
+    qDebug() << "Client connected ";
 
     clients.insert(client);
 }
@@ -86,8 +83,6 @@ void MainWindow::disconnected()
 
 void MainWindow::writeLog(quint8 cmd, QString data, const QString& filePath, QString clientIp, QString clientPort)
 {
-    //data 처리 방식이나 후반 작성 해보다가 switch 고려중
-
     QString logCmd = "";
     if( cmd == 0x01){
         logCmd = "[CONNECT]";
@@ -109,6 +104,7 @@ void MainWindow::writeLog(quint8 cmd, QString data, const QString& filePath, QSt
         logCmd = "[NONE]";
     }
 
+
     QDateTime currentDateTime = QDateTime::currentDateTime();
     QString logTime = currentDateTime.toString("[yyyy-MM-dd HH:mm:ss]"); //폴더에 날짜가 표시 되지만 프로그램을 며칠동안 종료하지 않을 경우에 날짜를 명확하게 확인하려고 yyyy-MM-dd 표시
     QString uiLogData = QString("%1\n[%2:%3]\n%4 %5")
@@ -127,8 +123,6 @@ void MainWindow::writeLog(quint8 cmd, QString data, const QString& filePath, QSt
     // ui->logText->append(logTime + "[" + client_clientIp + ":" + client_clientPort + "]" + cmd + data );
 
     ui->logText->append(uiLogData);
-
-
 
     //로그파일 열고 적기
     QFileInfo fileInfo(filePath);
