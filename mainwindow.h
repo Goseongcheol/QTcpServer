@@ -20,7 +20,7 @@ class MainWindow : public QMainWindow
     Q_OBJECT
 
 public:
-    MainWindow(const QString& ip, quint16 port, QWidget *parent = nullptr);
+    MainWindow(const QString& ip, quint16 port, const QString& filePath, QWidget *parent = nullptr);
     ~MainWindow();
 
     void sendToAll(const QByteArray& msg);
@@ -40,6 +40,7 @@ private:
 
     bool startServer(const QString& ip, quint16 port);
     void stopServer();
+    void writeLog(quint8 cmd, QString data, const QString& filePath, QString clientIp, QString clientPort);
 
 signals:
     void started(int port);
