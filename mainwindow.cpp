@@ -12,16 +12,18 @@ MainWindow::MainWindow(const QString& ip, quint16 port, const QString& filePath,
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+
     logFilePath = filePath;
 
     server = new QTcpServer(this);
 
     connect(server, &QTcpServer::newConnection, this, &MainWindow::newConnection);
 
+
     if (server->listen(QHostAddress(ip), port)) {
-        qDebug() << "Server started on" << ip << ":" << port;
+        writeLog(0,"server on",logFilePath,ip, port);
     } else {
-        qDebug() << "Server failed:" << server->errorString();
+        writeLog(0,"server fail",logFilePath,ip, port);
     }
 }
 
@@ -36,12 +38,14 @@ void MainWindow::newConnection()
 {
     QTcpSocket *client = server->nextPendingConnection();
 
+    client_list.insert(client, QString("null"));
     // 클라이언트 연결
     connect(client, &QTcpSocket::readyRead, this, &MainWindow::readyRead);
     connect(client, &QTcpSocket::disconnected, this, &MainWindow::disconnected);
 
     //원래는 여기서 log처리해야하지만 client 의 port와 ip데이터만 변경해서 local로 돌리려고 readyRead에서 처리 예정
-    clients.insert(client);
+    // clients.insert(client);
+
 
     qDebug() << "ip: " << client->peerAddress().toString() << "port: " << client->peerPort() << "name? :" << client->peerName() ;
 
@@ -52,6 +56,7 @@ void MainWindow::readyRead()
 {
     QTcpSocket *client = qobject_cast<QTcpSocket*>(sender());
     if (!client) return;
+
 
     QByteArray packet = client->readAll();
 
@@ -110,6 +115,12 @@ void MainWindow::readyRead()
         qDebug() << "real DATA:" << data;
         // user_connect
         qDebug() << "connect";
+        qDebug() << client->peerAddress().toString() ;
+
+
+        //여기 밑에 이제 data 에서 userid와 username 을 가져와서 사용 해야 할듯?
+
+        client_list.insert(client, QString("0001"));
 
         //
         // 여기서 user 정보 저장, user_list, user_join, user_id중복 처리(반환?)
@@ -179,7 +190,7 @@ void MainWindow::disconnected()
     client->deleteLater();
 }
 
-void MainWindow::writeLog(quint8 cmd, QString data, const QString& filePath, QString clientIp, QString clientPort)
+void MainWindow::writeLog(quint8 cmd, QString data, const QString& filePath, QString clientIp, quint16 clientPort)
 {
     QString logCmd = "";
     if( cmd == 1){
@@ -207,15 +218,15 @@ void MainWindow::writeLog(quint8 cmd, QString data, const QString& filePath, QSt
     QString logTime = currentDateTime.toString("[yyyy-MM-dd HH:mm:ss]"); //폴더에 날짜가 표시 되지만 프로그램을 며칠동안 종료하지 않을 경우에 날짜를 명확하게 확인하려고 yyyy-MM-dd 표시
     QString uiLogData = QString("%1\n[%2:%3]\n%4 %5")
                             .arg(logTime,
-                                 clientIp,
-                                 clientPort) // port가 quint16 으로 작성했었음 오류 나옴
+                                 clientIp)
+                            .arg(clientPort) // port가 quint16 으로 작성했었음 오류 나옴
                             .arg(logCmd,
                                  data);
 
     QString logData = QString("%1[%2:%3]%4 %5")
                           .arg(logTime,
-                               clientIp,
-                               clientPort)
+                               clientIp)
+                          .arg(clientPort)
                           .arg(logCmd,
                                data);
     // ui->logText->append(logTime + "[" + client_clientIp + ":" + client_clientPort + "]" + cmd + data );

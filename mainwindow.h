@@ -34,11 +34,12 @@ private:
     quint16     serverPort = 0;
 
     QSet<QTcpSocket*>                clients;
+    QMap<QTcpSocket*,QString>        client_list;
     QHash<QTcpSocket*, QByteArray>   buffers;
 
     bool startServer(const QString& ip, quint16 port);
     void stopServer();
-    void writeLog(quint8 cmd, QString data, const QString& filePath, QString clientIp, QString clientPort);
+    void writeLog(quint8 cmd, QString data, const QString& filePath, QString clientIp, quint16 clientPort);
     QString logFilePath;
 
 
@@ -52,6 +53,7 @@ signals:
 
 private slots:
     void newConnection();
+    // 프로토콜 처리
     void readyRead();
     void disconnected();
     // void onSocketError(QAbstractSocket::SocketError);
