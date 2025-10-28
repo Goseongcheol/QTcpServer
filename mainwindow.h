@@ -41,6 +41,7 @@ private:
     void writeLog(quint8 cmd, QString data, const QString& filePath, QString clientIp, QString clientPort);
     QString logFilePath;
 
+
 signals:
     void started(int port);
     void stopped();

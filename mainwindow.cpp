@@ -40,18 +40,14 @@ void MainWindow::newConnection()
     connect(client, &QTcpSocket::readyRead, this, &MainWindow::readyRead);
     connect(client, &QTcpSocket::disconnected, this, &MainWindow::disconnected);
 
-    // 추가할 내용
-    // USERID 중복 걸러내기(필수) + 모든 주고받는 통신에 checksum 확인과 ack or nack 추가하기.
-    // 여기에 클라이언트 정보 받아서 사용자 목록에 추가 + 접속중인 사용자에게 목록 전송 (브로드캐스트)
-    //
-
     //원래는 여기서 log처리해야하지만 client 의 port와 ip데이터만 변경해서 local로 돌리려고 readyRead에서 처리 예정
-    // qDebug() << "Client connected ";
-
     clients.insert(client);
+
+    qDebug() << "ip: " << client->peerAddress().toString() << "port: " << client->peerPort() << "name? :" << client->peerName() ;
+
 }
 
-//채팅 메세지 처리
+// 프로토콜 처리
 void MainWindow::readyRead()
 {
     QTcpSocket *client = qobject_cast<QTcpSocket*>(sender());
@@ -67,10 +63,10 @@ void MainWindow::readyRead()
     quint16 LEN = (static_cast<quint16>(lenH) << 8) | lenL;
 
 
-    //패킷 형식 검증
+    // 패킷 형식(사이즈로) 검증
     if (packet.size() < 1 + 1 + 2 + LEN + 1 + 1) {
         qDebug() << "packet size error";
-        //nack 보내기
+        // nack 보내기
         return;
     }
 
@@ -86,32 +82,40 @@ void MainWindow::readyRead()
 
     // qDebug() << "STX: "  << STX << "ETX: " << ETX << "cehcksum :" << checksum << "ETX: " << expect ;
 
-    //STX, ETX 검증
+    // STX, ETX 검증
     if(STX != 2 || ETX != 3){
         qDebug() << "STX OR ETX error";
         //
-        //nack보내기
+        // nack보내기
         //
         return;
     }
 
-    //받은 checksum과 계산한 checksum 확인하기
+    // 받은 checksum과 계산한 checksum 확인하기
     if(checksum != expect)
     {
         qDebug() << "checksum error";
         //
-        //nack보내기
+        // nack보내기
         //
         return;
     }
 
 
-    //CMD 에 맞게 따로 처리
+    // CMD 에 맞게 따로 처리
     switch (CMD){
     case 1 :
-         qDebug() << "DATA:" << QString::fromUtf8(data);
-        //user_connect
+        // fromUtf8을 사용하는 이유
+        // QString::fromUtf8(data)
+        qDebug() << "real DATA:" << data;
+        // user_connect
         qDebug() << "connect";
+
+        //
+        // 여기서 user 정보 저장, user_list, user_join, user_id중복 처리(반환?)
+        // user 정보를 저장해둔걸로 log 작성 + ack or nack 전송
+        // user 정보를 어떻게 저장할지 생각 하고 저장한 뒤에 나중에 다시 사용해야함 (user_leave or chat 등 )
+        // user 정보를 배열에 저장해서 userid로 매칭해서 사용? 필요한 ip,port,name 을 가져와서 user_list나 join 등에 사용?
 
 
         break;
@@ -119,45 +123,39 @@ void MainWindow::readyRead()
         //user_list
         qDebug() << "user_list";
 
-
         break;
     case 3 :
         //user_join
         qDebug() << "user_join";
-
 
         break;
     case 4 :
         //user_leave
         qDebug() << "user_leave";
 
-
         break;
     case 8 :
         //ack
         qDebug() << "ack";
-
 
         break;
     case 9 :
         //Nack
         qDebug() << "nack";
 
-
         break;
     case 18 :
         //chat으로 메세지 송수신 + 브로드캐스트
+        qDebug() << "real DATA:" << data;
         qDebug() << "chat ";
-
-
+          ui->SendText->setText(QString::fromUtf8(data));
+          ui->logText->setText(QString::fromUtf8(data));
+        // writeLog(CMD,data,logFilePath,);
         break;
     default :
-        qDebug() << "DATA:" << QString::fromUtf8(data);
         qDebug() << "none";
-
         break;
     }
-
     qDebug() << "readyRead end";
 }
 
@@ -165,10 +163,6 @@ void MainWindow::readyRead()
 // 받은데이터 로그에 남기기(ui 표시 + 해당 날짜 폴더에 로그 기록하기
 // 채팅 메세지와 connect연결 0x01 과 0x12로 구분해서 처리하면 될듯? CMD 패킷만 뜯어서 switch case 사용?
 //
-
-
-
-
 
 //클라이언트 연결이 종료되면 clients 목록에서 제거
 void MainWindow::disconnected()
@@ -188,21 +182,21 @@ void MainWindow::disconnected()
 void MainWindow::writeLog(quint8 cmd, QString data, const QString& filePath, QString clientIp, QString clientPort)
 {
     QString logCmd = "";
-    if( cmd == 0x01){
+    if( cmd == 1){
         logCmd = "[CONNECT]";
-    }else if(cmd == 0x02){
+    }else if(cmd == 2){
         logCmd = "[LIST]";
-    }else if(cmd == 0x03){
+    }else if(cmd == 3){
         logCmd = "[JOIN]";
-    }else if(cmd == 0x04){
+    }else if(cmd == 4){
         logCmd = "[LEAVE]";
-    }else if(cmd == 0x08){
+    }else if(cmd == 8){
         logCmd = "[ack]";
-    }else if(cmd == 0x09){
+    }else if(cmd == 9){
         logCmd = "[nack]";
-    }else if(cmd == 0x12){
+    }else if(cmd == 18){
         logCmd = "[CHAT_MSG]";
-    }else if(cmd == 0x13){
+    }else if(cmd == 19){
         logCmd = "[DISCONNECT]";
     }else {
         logCmd = "[NONE]";
