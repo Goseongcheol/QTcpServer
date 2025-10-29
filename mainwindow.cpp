@@ -19,7 +19,6 @@ MainWindow::MainWindow(const QString& ip, quint16 port, const QString& filePath,
 
     connect(server, &QTcpServer::newConnection, this, &MainWindow::newConnection);
 
-
     if (server->listen(QHostAddress(ip), port)) {
         writeLog(0,"server on",ip, port);
     } else {
@@ -33,22 +32,12 @@ MainWindow::~MainWindow()
     server->close();
 }
 
-// 새 클라이언트 접속 처리
 void MainWindow::newConnection()
 {
     QTcpSocket *client = server->nextPendingConnection();
-
-    client_list.insert(client, QString("null"));
     // 클라이언트 연결
     connect(client, &QTcpSocket::readyRead, this, &MainWindow::readyRead);
     connect(client, &QTcpSocket::disconnected, this, &MainWindow::disconnected);
-
-    //원래는 여기서 log처리해야하지만 client 의 port와 ip데이터만 변경해서 local로 돌리려고 readyRead에서 처리 예정
-    // clients.insert(client);
-
-
-    qDebug() << "ip: " << client->peerAddress().toString() << "port: " << client->peerPort() << "name? :" << client->peerName() ;
-
 }
 
 // 프로토콜 처리
@@ -57,9 +46,7 @@ void MainWindow::readyRead()
     QTcpSocket *client = qobject_cast<QTcpSocket*>(sender());
     if (!client) return;
 
-
     QByteArray packet = client->readAll();
-
 
     quint8 STX  = static_cast<quint8>(packet[0]);
     quint8 CMD  = static_cast<quint8>(packet[1]);
@@ -67,11 +54,12 @@ void MainWindow::readyRead()
     quint8 lenL = static_cast<quint8>(packet[3]);
     quint16 LEN = (static_cast<quint16>(lenH) << 8) | lenL;
 
-
     // 패킷 형식(사이즈로) 검증
     if (packet.size() < 1 + 1 + 2 + LEN + 1 + 1) {
         qDebug() << "packet size error";
+        //
         // nack 보내기
+        //
         return;
     }
 
@@ -84,8 +72,6 @@ void MainWindow::readyRead()
     for (unsigned char c : data)
         sum += c;
     quint8 calChecksum = static_cast<quint8>(sum % 256);
-
-    // qDebug() << "STX: "  << STX << "ETX: " << ETX << "cehcksum :" << checksum << "ETX: " << expect ;
 
     // STX, ETX 검증
     if(STX != 2 || ETX != 3){
@@ -105,10 +91,10 @@ void MainWindow::readyRead()
         //
         return;
     }
-    // QString ID = data.mid(0,4);
 
     // CMD 에 맞게 따로 처리
     switch (CMD){
+    //Connect (0x01)
     case 1 :{
         // QString::fromUtf8(data)
         qDebug() << "real DATA:" << data;
@@ -122,19 +108,23 @@ void MainWindow::readyRead()
 
         QString loginLogData = QString("%1|%2 USER LOGIN!").arg(ID,NAME);
 
-        writeLog(CMD,loginLogData,client->peerAddress().toString(), client->peerPort());
+        clientInfo info;
+        info.userId = ID;
+        info.userName = NAME;
+        info.clientIp = client->peerAddress().toString();
+        info.clientPort = client->peerPort();
 
-
-        //여기 밑에 이제 data 에서 userid와 username 을 가져와서 사용 해야 할듯?
-
-        client_list.insert(client, QString(ID));
-
+        // 여기쯤? 에서 userid 중복 걸러내기 해야할듯
         //
         // 여기서 user 정보 저장, user_list, user_join, user_id중복 처리(반환?)
-        // user 정보를 저장해둔걸로 log 작성 + ack or nack 전송
-        // user 정보를 어떻게 저장할지 생각 하고 저장한 뒤에 나중에 다시 사용해야함 (user_leave or chat 등 )
-        // user 정보를 배열에 저장해서 userid로 매칭해서 사용? 필요한 ip,port,name 을 가져와서 user_list나 join 등에 사용?
+        client_list.insert(client, info);
+        addUserRow(client, info);
 
+        writeLog(CMD,loginLogData,client->peerAddress().toString(), client->peerPort());
+
+        //
+        // ack or nack 전송
+        //
 
         break;
     }
@@ -187,6 +177,11 @@ void MainWindow::readyRead()
 
         writeLog(CMD,chatLogData,client->peerAddress().toString(), client->peerPort());
 
+        //??
+        auto it = client_list.find(client);
+        const clientInfo& info = it.value();
+
+        qDebug() << "client IP : " << info.clientIp ;
         //
         // 받은 메세지 처리하기 추가
         //
@@ -201,11 +196,6 @@ void MainWindow::readyRead()
     }
     qDebug() << "readyRead end";
 }
-
-// 추가할 내용
-// 받은데이터 로그에 남기기(ui 표시 + 해당 날짜 폴더에 로그 기록하기
-// 채팅 메세지와 connect연결 0x01 과 0x12로 구분해서 처리하면 될듯? CMD 패킷만 뜯어서 switch case 사용?
-//
 
 //클라이언트 연결이 종료되면 clients 목록에서 제거
 void MainWindow::disconnected()
@@ -261,7 +251,6 @@ void MainWindow::writeLog(quint8 cmd, QString data, QString clientIp, quint16 cl
                           .arg(clientPort)
                           .arg(logCmd,
                                data);
-    // ui->logText->append(logTime + "[" + client_clientIp + ":" + client_clientPort + "]" + cmd + data );
 
     ui->logText->append(uiLogData);
 
@@ -283,4 +272,39 @@ void MainWindow::writeLog(quint8 cmd, QString data, QString clientIp, quint16 cl
     {
         //error 처리
     }
+}
+
+void MainWindow::initUserTable()
+{
+    auto *tw = ui->userListTableWidget;
+    tw->setColumnCount(4); // UserID, UserName, UserIP, UserPort
+
+    tw->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    tw->setSelectionBehavior(QAbstractItemView::SelectRows);
+    tw->setEditTriggers(QAbstractItemView::NoEditTriggers); // 읽기전용 표로 쓸 때
+}
+
+void MainWindow::addUserRow(QTcpSocket* client, const clientInfo& info)
+{
+    auto *tw = ui->userListTableWidget;
+
+    //
+    // 이미 존재하는 자료면 업데이트 또는 새로운 줄 추가하지 않기
+    //
+
+    const int row = tw->rowCount();
+    tw->insertRow(row);
+
+    tw->setItem(row, 0, new QTableWidgetItem(info.userId));
+    tw->setItem(row, 1, new QTableWidgetItem(info.userName));
+    tw->setItem(row, 2, new QTableWidgetItem(info.clientIp));
+    tw->setItem(row, 3, new QTableWidgetItem(QString::number(info.clientPort)));
+
+    for (int c = 0; c < 4; ++c) {
+        auto *it = tw->item(row, c);
+        it->setTextAlignment(Qt::AlignCenter);
+    }
+
+    // 소켓→행 매핑 저장 행에서 소켓 정보를 찾아 매칭하기위해서
+    m_rowOfSocket.insert(client, row);
 }

@@ -33,15 +33,25 @@ private:
     QString     serverIp;
     quint16     serverPort = 0;
 
+    struct clientInfo {
+        QString userId;
+        QString userName;
+        QString clientIp;
+        quint16 clientPort;
+    };
+
     QSet<QTcpSocket*>                clients;
-    QMap<QTcpSocket*,QString>        client_list;
-    QHash<QTcpSocket*, QByteArray>   buffers;
+    QMap<QTcpSocket*,clientInfo>     client_list;
+    // QHash<QTcpSocket*, QByteArray>   buffers;
+    QHash<QTcpSocket*, int> m_rowOfSocket;
+
 
     bool startServer(const QString& ip, quint16 port);
     void stopServer();
     void writeLog(quint8 cmd, QString data, QString clientIp, quint16 clientPort);
     QString logFilePath;
-
+    void addUserRow(QTcpSocket* client, const clientInfo& info);
+    void initUserTable();
 
 signals:
     void started(int port);
@@ -50,6 +60,7 @@ signals:
     void clientDisconnected(QTcpSocket* client, const QString& peer, const QString& reason);
     void messageReceived(QTcpSocket* client, const QByteArray& line);
     void errorOccurred(const QString& err);
+
 
 private slots:
     void newConnection();
