@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1077</width>
-    <height>532</height>
+    <height>517</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -24,13 +24,6 @@
      </rect>
     </property>
     <layout class="QGridLayout" name="gridLayout">
-     <item row="2" column="1">
-      <widget class="QLabel" name="CheckBoxLabel">
-       <property name="text">
-        <string>공지/메세지 전송</string>
-       </property>
-      </widget>
-     </item>
      <item row="4" column="1">
       <widget class="QTextEdit" name="SendText"/>
      </item>
@@ -38,13 +31,6 @@
       <widget class="QLabel" name="LogLabel">
        <property name="text">
         <string>로그</string>
-       </property>
-      </widget>
-     </item>
-     <item row="0" column="1">
-      <widget class="QLabel" name="ConnectUserLabel">
-       <property name="text">
-        <string>접속 유저</string>
        </property>
       </widget>
      </item>
@@ -59,6 +45,23 @@
       <widget class="QCheckBox" name="AllUserCheckBox">
        <property name="text">
         <string>전체 유저 선택</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0" rowspan="4">
+      <widget class="QTextEdit" name="logText"/>
+     </item>
+     <item row="0" column="1">
+      <widget class="QLabel" name="ConnectUserLabel">
+       <property name="text">
+        <string>접속 유저</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="1">
+      <widget class="QLabel" name="CheckBoxLabel">
+       <property name="text">
+        <string>공지/메세지 전송</string>
        </property>
       </widget>
      </item>
@@ -85,9 +88,6 @@
         </property>
        </column>
       </widget>
-     </item>
-     <item row="1" column="0" rowspan="4">
-      <widget class="QTextEdit" name="logText"/>
      </item>
     </layout>
    </widget>

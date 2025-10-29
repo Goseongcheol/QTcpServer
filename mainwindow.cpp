@@ -94,14 +94,8 @@ void MainWindow::readyRead()
 
     // CMD 에 맞게 따로 처리
     switch (CMD){
-    //Connect (0x01)
+    // CONNECT (0x01)
     case 1 :{
-        // QString::fromUtf8(data)
-        qDebug() << "real DATA:" << data;
-        // user_connect
-        qDebug() << "connect";
-        qDebug() << client->peerAddress().toString() ;
-
         // C++ 에서는 switch case 안에 변수 선언을 하면 다음 case로 넘어갈떄 변수초기화 오류가 발생할수있어서  case문을 {} 묶지 않으면 사용 불가하게 만듬
         QString ID = data.mid(0,4);
         QString NAME = data.mid(4);
@@ -114,40 +108,51 @@ void MainWindow::readyRead()
         info.clientIp = client->peerAddress().toString();
         info.clientPort = client->peerPort();
 
-        // 여기쯤? 에서 userid 중복 걸러내기 해야할듯
-        //
-        // 여기서 user 정보 저장, user_list, user_join, user_id중복 처리(반환?)
         client_list.insert(client, info);
+
+
+        if (m_userIdToSocket.contains(ID)) {
+            // log 추가
+            client->disconnectFromHost();
+            return;
+        }
+
+        m_userIdToSocket.insert(ID, client);
+
         addUserRow(client, info);
 
         writeLog(CMD,loginLogData,client->peerAddress().toString(), client->peerPort());
 
         //
+        //user_join
+        //user_list
+        // 추가 후
         // ack or nack 전송
         //
 
         break;
     }
-    case 2 :
-    {
-        //user_list
-        qDebug() << "user_list";
+    // USER_LIST (0x02)  client 에서 받기 사용
+    // case 2 :
+    // {
+    //     //user_list
+    //     qDebug() << "user_list";
 
-        break;
-    }
-    case 3 :
-    {
-        //user_join
-        qDebug() << "user_join";
+    //     break;
+    // }
+    // case 3 :
+    // {
+    //     //user_join
+    //     qDebug() << "user_join";
 
-        break;
-     }
-    case 4 :
-    {    //user_leave
-        qDebug() << "user_leave";
+    //     break;
+    //  }
+    // case 4 :
+    // {    //user_leave
+    //     qDebug() << "user_leave";
 
-        break;
-    }
+    //     break;
+    // }
     case 8 :
     {
         //ack
@@ -183,7 +188,7 @@ void MainWindow::readyRead()
 
         qDebug() << "client IP : " << info.clientIp ;
         //
-        // 받은 메세지 처리하기 추가
+        // 받은 메세지 처리하기 추가 전체 클라이언트에게 브로드캐스트
         //
 
         break;
@@ -203,15 +208,26 @@ void MainWindow::disconnected()
     QTcpSocket *client = qobject_cast<QTcpSocket*>(sender());
     if (!client) return;
 
-    qDebug() << "Client disconnected" ;
 
-    // 추가할 내용
-    // 여기쯤에 사용자 목록 갱신 + 전체 접속자에게 목록 보내기
-    //
-    clients.remove(client);
+    auto it = client_list.find(client);
+    if (it != client_list.end()) {
+        const QString userId = it.value().userId;
+        const QString userName = it.value().userName;
+        quint8 CMD = 4;
+        QString userLeaveLog = QString ("%1|%2 USER LOGOUT!").arg(userId,userName);
+
+        broadcastMessage(CMD, userId, client);
+        writeLog(CMD,userLeaveLog,client->peerAddress().toString(), client->peerPort());
+
+        m_userIdToSocket.remove(userId);
+
+        removeUserRow(client);
+
+        client_list.erase(it);
+    }
+
     client->deleteLater();
 }
-
 void MainWindow::writeLog(quint8 cmd, QString data, QString clientIp, quint16 clientPort)
 {
     QString logCmd = "";
@@ -281,7 +297,7 @@ void MainWindow::initUserTable()
 
     tw->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
     tw->setSelectionBehavior(QAbstractItemView::SelectRows);
-    tw->setEditTriggers(QAbstractItemView::NoEditTriggers); // 읽기전용 표로 쓸 때
+    tw->setEditTriggers(QAbstractItemView::NoEditTriggers);
 }
 
 void MainWindow::addUserRow(QTcpSocket* client, const clientInfo& info)
@@ -307,4 +323,52 @@ void MainWindow::addUserRow(QTcpSocket* client, const clientInfo& info)
 
     // 소켓→행 매핑 저장 행에서 소켓 정보를 찾아 매칭하기위해서
     m_rowOfSocket.insert(client, row);
+}
+
+void MainWindow::removeUserRow(QTcpSocket* client)
+{
+    auto it = m_rowOfSocket.find(client);
+    if (it == m_rowOfSocket.end()) return;
+
+    int row = it.value();
+    ui->userListTableWidget->removeRow(row);
+    m_rowOfSocket.erase(it);
+
+    // 인덱스 조정 (선택사항)
+    for (auto j = m_rowOfSocket.begin(); j != m_rowOfSocket.end(); ++j)
+        if (j.value() > row) j.value() -= 1;
+}
+
+void MainWindow::broadcastMessage(quint8 CMD, QString dataStr, QTcpSocket* excludeClient)
+{
+    QByteArray data = dataStr.toUtf8();
+    QByteArray packet;
+    quint8 STX = 0x02;
+    quint16 len = data.size();
+    quint8 ETX = 0x03;
+
+    packet.append(STX);
+    packet.append(CMD);
+    packet.append((len >> 8) & 0xFF);
+    packet.append(len & 0xFF);
+    packet.append(data);
+
+    quint32 sum = CMD + ((len >> 8) & 0xFF) + (len & 0xFF);
+    for (unsigned char c : data)
+        sum += c;
+    quint8 checksum = sum % 256;
+
+    packet.append(checksum);
+    packet.append(ETX);
+
+    for (auto it = client_list.constBegin(); it != client_list.constEnd(); ++it)
+    {
+        QTcpSocket* client = it.key();
+
+        if (client == excludeClient)
+            continue;
+
+        if (client->state() == QAbstractSocket::ConnectedState)
+            client->write(packet);
+    }
 }

@@ -42,7 +42,7 @@ private:
 
     QSet<QTcpSocket*>                clients;
     QMap<QTcpSocket*,clientInfo>     client_list;
-    // QHash<QTcpSocket*, QByteArray>   buffers;
+    QHash<QString, QTcpSocket*> m_userIdToSocket;
     QHash<QTcpSocket*, int> m_rowOfSocket;
 
 
@@ -52,6 +52,9 @@ private:
     QString logFilePath;
     void addUserRow(QTcpSocket* client, const clientInfo& info);
     void initUserTable();
+    bool isUserIdDuplicate(const QString &userId) const ;
+    void removeUserRow(QTcpSocket* client);
+    void broadcastMessage(quint8 CMD, QString data, QTcpSocket* excludeClient);
 
 signals:
     void started(int port);
