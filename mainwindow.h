@@ -54,7 +54,8 @@ private:
     void initUserTable();
     bool isUserIdDuplicate(const QString &userId) const ;
     void removeUserRow(QTcpSocket* client);
-    void broadcastMessage(quint8 CMD, QString data, QTcpSocket* excludeClient);
+    void broadcastMessage(quint8 CMD, QString dataStr, QTcpSocket* excludeClient);
+    void ackOrNack(QTcpSocket* client, quint8 cmd, quint8 refCMD, quint8 code);
 
 signals:
     void started(int port);
