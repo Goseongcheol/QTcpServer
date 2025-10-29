@@ -21,9 +21,9 @@ MainWindow::MainWindow(const QString& ip, quint16 port, const QString& filePath,
 
 
     if (server->listen(QHostAddress(ip), port)) {
-        writeLog(0,"server on",logFilePath,ip, port);
+        writeLog(0,"server on",ip, port);
     } else {
-        writeLog(0,"server fail",logFilePath,ip, port);
+        writeLog(0,"server fail",ip, port);
     }
 }
 
@@ -83,7 +83,7 @@ void MainWindow::readyRead()
     quint32 sum = CMD + lenH + lenL;
     for (unsigned char c : data)
         sum += c;
-    quint8 expect = static_cast<quint8>(sum % 256);
+    quint8 calChecksum = static_cast<quint8>(sum % 256);
 
     // qDebug() << "STX: "  << STX << "ETX: " << ETX << "cehcksum :" << checksum << "ETX: " << expect ;
 
@@ -97,7 +97,7 @@ void MainWindow::readyRead()
     }
 
     // 받은 checksum과 계산한 checksum 확인하기
-    if(checksum != expect)
+    if(checksum != calChecksum)
     {
         qDebug() << "checksum error";
         //
@@ -105,22 +105,29 @@ void MainWindow::readyRead()
         //
         return;
     }
-
+    // QString ID = data.mid(0,4);
 
     // CMD 에 맞게 따로 처리
     switch (CMD){
-    case 1 :
-        // fromUtf8을 사용하는 이유
+    case 1 :{
         // QString::fromUtf8(data)
         qDebug() << "real DATA:" << data;
         // user_connect
         qDebug() << "connect";
         qDebug() << client->peerAddress().toString() ;
 
+        // C++ 에서는 switch case 안에 변수 선언을 하면 다음 case로 넘어갈떄 변수초기화 오류가 발생할수있어서  case문을 {} 묶지 않으면 사용 불가하게 만듬
+        QString ID = data.mid(0,4);
+        QString NAME = data.mid(4);
+
+        QString loginLogData = QString("%1|%2 USER LOGIN!").arg(ID,NAME);
+
+        writeLog(CMD,loginLogData,client->peerAddress().toString(), client->peerPort());
+
 
         //여기 밑에 이제 data 에서 userid와 username 을 가져와서 사용 해야 할듯?
 
-        client_list.insert(client, QString("0001"));
+        client_list.insert(client, QString(ID));
 
         //
         // 여기서 user 정보 저장, user_list, user_join, user_id중복 처리(반환?)
@@ -130,42 +137,67 @@ void MainWindow::readyRead()
 
 
         break;
+    }
     case 2 :
+    {
         //user_list
         qDebug() << "user_list";
 
         break;
+    }
     case 3 :
+    {
         //user_join
         qDebug() << "user_join";
 
         break;
+     }
     case 4 :
-        //user_leave
+    {    //user_leave
         qDebug() << "user_leave";
 
         break;
+    }
     case 8 :
+    {
         //ack
         qDebug() << "ack";
 
         break;
+    }
     case 9 :
+    {
         //Nack
         qDebug() << "nack";
 
         break;
+    }
     case 18 :
+    {
         //chat으로 메세지 송수신 + 브로드캐스트
         qDebug() << "real DATA:" << data;
         qDebug() << "chat ";
-          ui->SendText->setText(QString::fromUtf8(data));
-          ui->logText->setText(QString::fromUtf8(data));
-        // writeLog(CMD,data,logFilePath,);
+
+        QString ID = data.mid(0,4);
+        QString MSG = data.mid(4);
+
+        //ID와 MSG 로 받은 메세지 구분해서 처리하기
+
+        QString chatLogData = QString("%1:%2").arg(ID,MSG);
+
+        writeLog(CMD,chatLogData,client->peerAddress().toString(), client->peerPort());
+
+        //
+        // 받은 메세지 처리하기 추가
+        //
+
         break;
+    }
     default :
+    {
         qDebug() << "none";
         break;
+    }
     }
     qDebug() << "readyRead end";
 }
@@ -190,7 +222,7 @@ void MainWindow::disconnected()
     client->deleteLater();
 }
 
-void MainWindow::writeLog(quint8 cmd, QString data, const QString& filePath, QString clientIp, quint16 clientPort)
+void MainWindow::writeLog(quint8 cmd, QString data, QString clientIp, quint16 clientPort)
 {
     QString logCmd = "";
     if( cmd == 1){
@@ -234,11 +266,11 @@ void MainWindow::writeLog(quint8 cmd, QString data, const QString& filePath, QSt
     ui->logText->append(uiLogData);
 
     //로그파일 열고 적기
-    QFileInfo fileInfo(filePath);
+    QFileInfo fileInfo(logFilePath);
     QDir dir;
     dir.mkpath(fileInfo.path());
 
-    QFile File(filePath);
+    QFile File(logFilePath);
 
     if (File.open(QFile::WriteOnly | QFile::Append | QFile::Text))
     {

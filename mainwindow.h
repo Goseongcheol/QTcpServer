@@ -39,7 +39,7 @@ private:
 
     bool startServer(const QString& ip, quint16 port);
     void stopServer();
-    void writeLog(quint8 cmd, QString data, const QString& filePath, QString clientIp, quint16 clientPort);
+    void writeLog(quint8 cmd, QString data, QString clientIp, quint16 clientPort);
     QString logFilePath;
 
 
