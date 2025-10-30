@@ -54,12 +54,13 @@ void MainWindow::readyRead()
     quint8 lenL = quint8(packet[3]);
     quint16 LEN = (quint16(lenH) << 8) | lenL;
 
+    // CMD 가 알려진 CMD가 아니라면
+    // if()
+
     // 패킷 형식(사이즈로) 검증
     if (packet.size() < 1 + 1 + 2 + LEN + 1 + 1) {
         qDebug() << "packet size error";
-        //
-        // nack 보내기
-        //
+        ackOrNack(client,0x09,0x01,0x07);
         return;
     }
 
@@ -133,14 +134,19 @@ void MainWindow::readyRead()
         portBytes.append(static_cast<char>((port >> 8) & 0xFF));
         portBytes.append(static_cast<char>(port & 0xFF));
 
-
-        QByteArray userJoinData = idBytes + nameBytes+ ipBytes + portBytes ;
+        // qDebug() << "포트찍어보기";
+        // qDebug() << portBytes;
+        // qDebug() << port;
+        // 가끔 포트번호가 짤리는게 있는 현상 qDebug를 넣으면 정상적인 포트 읽음
+        // 패킷이 전부 보내지기전에 패킷을 읽어서 생기는 상황이라고 확인 - 추가 확인 필요
 
         //CONNECT ACK 보내기 부분
         ackOrNack(client,0x08,0x01,0x00);
 
+        QByteArray userJoinData = idBytes + nameBytes+ ipBytes + portBytes ;
+        // qDebug() << userJoinData;
 
-        //USER_JOIN 작성중
+        //USER_JOIN
         broadcastMessage(0x03, userJoinData, client);
 
         //
@@ -161,17 +167,41 @@ void MainWindow::readyRead()
     }
     case 8 :
     {
-        //ack
-        qDebug() << "ack";
-
+        quint8 ackCMD = quint8(packet[4]);
+        QString ackMessage = "해당 CMD 성공";
+        writeLog(ackCMD, ackMessage,client->peerAddress().toString(),client->peerPort());
         break;
     }
     case 9 :
     {
-        //Nack
-        qDebug() << "nack";
-
+        quint8 nackCMD = quint8(packet[4]);
+        quint8 nackErrorCode = quint8(packet[5]);
+        if(nackErrorCode == 1)
+        {
+            QString nackMessage = "checksum error";
+         writeLog(nackCMD, nackMessage,client->peerAddress().toString(),client->peerPort());
+        }else if(nackErrorCode == 2)
+        {
+            QString nackMessage = "Unknown CMD";
+         writeLog(nackCMD, nackMessage,client->peerAddress().toString(),client->peerPort());
+        }else if(nackErrorCode == 3)
+        {
+            QString nackMessage = "Invalid Data";
+         writeLog(nackCMD, nackMessage,client->peerAddress().toString(),client->peerPort());
+        }else if(nackErrorCode == 4)
+        {
+            QString nackMessage = "Time Out";
+         writeLog(nackCMD, nackMessage,client->peerAddress().toString(),client->peerPort());
+        }else if(nackErrorCode == 5)
+        {
+            QString nackMessage = "Permossion Denied";
+         writeLog(nackCMD, nackMessage,client->peerAddress().toString(),client->peerPort());
+        }else{
+            QString nackMessage = "undefind code";
+        writeLog(nackCMD, nackMessage,client->peerAddress().toString(),client->peerPort());
+        }
         break;
+
     }
     case 18 :
     {
@@ -193,9 +223,8 @@ void MainWindow::readyRead()
         const clientInfo& info = it.value();
 
         qDebug() << "client IP : " << info.clientIp ;
-        //
-        // 받은 메세지 처리하기 추가 전체 클라이언트에게 브로드캐스트
-        //
+
+        broadcastMessage(0x12, data, client);
 
         break;
     }
@@ -356,6 +385,7 @@ void MainWindow::broadcastMessage(quint8 CMD, QString dataStr, QTcpSocket* exclu
     packet.append((len >> 8) & 0xFF);
     packet.append(len & 0xFF);
     packet.append(data);
+
 
     quint32 sum = CMD + ((len >> 8) & 0xFF) + (len & 0xFF);
     for (unsigned char c : data)

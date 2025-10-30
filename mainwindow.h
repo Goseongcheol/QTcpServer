@@ -40,9 +40,11 @@ private:
         quint16 clientPort;
     };
 
-    QSet<QTcpSocket*>                clients;
+    //QMap 으로 client Info 저장
     QMap<QTcpSocket*,clientInfo>     client_list;
+    //userId로 socket과 매칭
     QHash<QString, QTcpSocket*> m_userIdToSocket;
+    //소캣과 행 매치
     QHash<QTcpSocket*, int> m_rowOfSocket;
 
 
