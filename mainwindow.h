@@ -58,6 +58,7 @@ private:
     void removeUserRow(QTcpSocket* client);
     void broadcastMessage(quint8 CMD, QString dataStr, QTcpSocket* excludeClient);
     void ackOrNack(QTcpSocket* client, quint8 cmd, quint8 refCMD, quint8 code);
+    void userListSend(quint8 CMD, QTcpSocket* client);
 
 signals:
     void started(int port);

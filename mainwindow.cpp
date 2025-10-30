@@ -59,7 +59,6 @@ void MainWindow::readyRead()
 
     // 패킷 형식(사이즈로) 검증
     if (packet.size() < 1 + 1 + 2 + LEN + 1 + 1) {
-        qDebug() << "packet size error";
         ackOrNack(client,0x09,0x01,0x07);
         return;
     }
@@ -80,7 +79,6 @@ void MainWindow::readyRead()
         ackOrNack(client,0x09,0x01,0x06);
         return;
     }
-
     // 받은 checksum과 계산한 checksum 확인하기
     if(checksum != calChecksum)
     {
@@ -134,34 +132,24 @@ void MainWindow::readyRead()
         portBytes.append(static_cast<char>((port >> 8) & 0xFF));
         portBytes.append(static_cast<char>(port & 0xFF));
 
-        // qDebug() << "포트찍어보기";
-        // qDebug() << portBytes;
-        // qDebug() << port;
-        // 가끔 포트번호가 짤리는게 있는 현상 qDebug를 넣으면 정상적인 포트 읽음
-        // 패킷이 전부 보내지기전에 패킷을 읽어서 생기는 상황이라고 확인 - 추가 확인 필요
+        QByteArray userJoinData = idBytes + nameBytes+ ipBytes + portBytes ;
 
-        //CONNECT ACK 보내기 부분
         ackOrNack(client,0x08,0x01,0x00);
 
-        QByteArray userJoinData = idBytes + nameBytes+ ipBytes + portBytes ;
-        // qDebug() << userJoinData;
+        //ACK or NACK 전송 이후 클라이언트에서 패킷을 잘 못 받아서 대기 시간(임시용) 나중에 정확한 해결방법 추가 예정
+        client->waitForBytesWritten(200);
 
         //USER_JOIN
         broadcastMessage(0x03, userJoinData, client);
 
-        //
-        //USER_LIST 보내기 작성
-        //
+        // 혹시 몰라서 여기도 추가
+        client->waitForBytesWritten(200);
 
         writeLog(CMD,loginLogData,client->peerAddress().toString(), client->peerPort());
 
-        //
-        //user_join
-        //user_list
-        // 추가 후
-        // ack or nack 전송
-        //
+        userListSend(0x02,client);
 
+        // qDebug() << "List end" ;
 
         break;
     }
@@ -205,24 +193,16 @@ void MainWindow::readyRead()
     }
     case 18 :
     {
-        //chat으로 메세지 송수신 + 브로드캐스트
-        qDebug() << "real DATA:" << data;
-        qDebug() << "chat ";
 
-        QString ID = data.mid(0,4);
-        QString MSG = data.mid(4);
-
-        //ID와 MSG 로 받은 메세지 구분해서 처리하기
+        QString ID = data.mid(0,16).trimmed();
+        QString MSG = data.mid(16);
 
         QString chatLogData = QString("%1:%2").arg(ID,MSG);
 
         writeLog(CMD,chatLogData,client->peerAddress().toString(), client->peerPort());
 
-        //??
         auto it = client_list.find(client);
         const clientInfo& info = it.value();
-
-        qDebug() << "client IP : " << info.clientIp ;
 
         broadcastMessage(0x12, data, client);
 
@@ -230,9 +210,9 @@ void MainWindow::readyRead()
     }
     default :
     {
-        qDebug() << "none";
         break;
     }
+
     }
 }
 
@@ -366,7 +346,6 @@ void MainWindow::removeUserRow(QTcpSocket* client)
     ui->userListTableWidget->removeRow(row);
     m_rowOfSocket.erase(it);
 
-    // 인덱스 조정 (선택사항)
     for (auto j = m_rowOfSocket.begin(); j != m_rowOfSocket.end(); ++j)
         if (j.value() > row) j.value() -= 1;
 }
@@ -395,9 +374,9 @@ void MainWindow::broadcastMessage(quint8 CMD, QString dataStr, QTcpSocket* exclu
     packet.append(checksum);
     packet.append(ETX);
 
-    for (auto it = client_list.constBegin(); it != client_list.constEnd(); ++it)
+    for (auto list = client_list.constBegin(); list != client_list.constEnd(); ++list)
     {
-        QTcpSocket* client = it.key();
+        QTcpSocket* client = list.key();
 
         if (client == excludeClient)
             continue;
@@ -436,9 +415,65 @@ void MainWindow::ackOrNack(QTcpSocket* client, quint8 cmd, quint8 refCMD, quint8
     packet.append(ETX); // ETX
 
     client->write(packet);
-    client->flush();
+    // client->flush();
 }
 
+// 전체 유저 리스트 해당 클라이언트에게 보내기
+void MainWindow::userListSend(quint8 CMD, QTcpSocket* client)
+{
+    QByteArray packet;
+    quint8 STX = 0x02;
+    quint8 ETX = 0x03;
+
+    QByteArray data;
+
+    quint8 count = client_list.size();
+
+    qDebug() << "userlistcount:" << count;
+
+    data.append(count);
+
+    for (auto it = client_list.begin(); it != client_list.end(); ++it)
+    {
+        const clientInfo &info = it.value();
+
+        QByteArray idBytes   = info.userId.toUtf8();
+        QByteArray nameBytes = info.userName.toUtf8();
+        QByteArray ipBytes   = info.clientIp.toUtf8();
+
+        QByteArray portBytes;
+        portBytes.append(static_cast<char>((info.clientPort >> 8) & 0xFF));
+        portBytes.append(static_cast<char>(info.clientPort & 0xFF));
+
+        if (idBytes.size()   < 4)  idBytes.append(QByteArray(4 - idBytes.size(), ' '));
+        if (nameBytes.size() < 16) nameBytes.append(QByteArray(16 - nameBytes.size(), ' '));
+        if (ipBytes.size()   < 15) ipBytes.append(QByteArray(15 - ipBytes.size(), ' '));
+
+        data.append(idBytes);
+        data.append(nameBytes);
+        data.append(ipBytes);
+        data.append(portBytes);
+    }
+
+    quint16 len = data.size();
+
+    packet.append(STX);
+    packet.append(CMD);
+    packet.append((len >> 8) & 0xFF);
+    packet.append(len & 0xFF);
+    packet.append(data);
+
+    quint32 sum = CMD + ((len >> 8) & 0xFF) + (len & 0xFF);
+    for (unsigned char c : data)
+        sum += c;
+    quint8 checksum = sum % 256;
+
+    packet.append(checksum);
+    packet.append(ETX);
+
+    client->write(packet);
+    client->flush();
+}
 
 
 
