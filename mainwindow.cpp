@@ -94,6 +94,11 @@ void MainWindow::readyRead()
     // CONNECT (0x01)
     case 1 :{
         // C++ 에서는 switch case 안에 변수 선언을 하면 다음 case로 넘어갈떄 변수초기화 오류가 발생할수있어서  case문을 {} 묶지 않으면 사용 불가하게 만듬
+        qDebug() << "connect client info";
+        qDebug() << client;
+        qDebug() << data;
+
+
         QString ID = data.mid(0,4).trimmed();
         QString NAME = data.mid(4,16).trimmed();
 
@@ -105,14 +110,13 @@ void MainWindow::readyRead()
         info.clientIp = client->peerAddress().toString();
         info.clientPort = client->peerPort();
 
-        client_list.insert(client, info);
-
         if (m_userIdToSocket.contains(ID)) {
-            // log 추가
+            ackOrNack(client,0x09,0x01,0x05);
             client->disconnectFromHost();
-            //UserID 중복 처리
             return;
         }
+
+        client_list.insert(client, info);
         m_userIdToSocket.insert(ID, client);
         addUserRow(client, info);
 
@@ -148,6 +152,8 @@ void MainWindow::readyRead()
         client->waitForBytesWritten(200);
 
         writeLog(CMD,loginLogData,client->peerAddress().toString(), client->peerPort());
+
+        client->waitForBytesWritten(200);
 
         userListSend(0x02,client);
 
@@ -500,7 +506,8 @@ void MainWindow::userListSend(quint8 CMD, QTcpSocket* client)
     packet.append(ETX);
 
     client->write(packet);
-    client->flush();
+    client->waitForBytesWritten(200);
+
 }
 
 
@@ -558,10 +565,10 @@ void MainWindow::on_disConnectButton_clicked()
             return;
         }
 
+        qDebug() << "disconnect client info";
+        qDebug() << sock;
+        qDebug() << userId;
 
         sock->disconnectFromHost();
-        sock->close();
-
-
 }
 
