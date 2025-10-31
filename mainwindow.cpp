@@ -110,11 +110,10 @@ void MainWindow::readyRead()
         if (m_userIdToSocket.contains(ID)) {
             // log 추가
             client->disconnectFromHost();
+            //UserID 중복 처리
             return;
         }
-
         m_userIdToSocket.insert(ID, client);
-
         addUserRow(client, info);
 
         //USER_JOIN 보내기
@@ -151,8 +150,6 @@ void MainWindow::readyRead()
         writeLog(CMD,loginLogData,client->peerAddress().toString(), client->peerPort());
 
         userListSend(0x02,client);
-
-        // qDebug() << "List end" ;
 
         break;
     }
@@ -203,9 +200,6 @@ void MainWindow::readyRead()
         QString chatLogData = QString("%1:%2").arg(ID,MSG);
 
         writeLog(CMD,chatLogData,client->peerAddress().toString(), client->peerPort());
-
-        // auto it = client_list.find(client);
-        // const clientInfo& info = it.value();
 
         broadcastMessage(0x12, data, client);
 
@@ -380,12 +374,13 @@ void MainWindow::broadcastMessage(quint8 CMD, QString dataStr, QTcpSocket* exclu
     for (auto list = client_list.constBegin(); list != client_list.constEnd(); ++list)
     {
         QTcpSocket* client = list.key();
-
         if (client == excludeClient)
             continue;
-
         if (client->state() == QAbstractSocket::ConnectedState)
+        {
             client->write(packet);
+            client->waitForBytesWritten(2000);
+        }
     }
 }
 
@@ -463,8 +458,6 @@ void MainWindow::userListSend(quint8 CMD, QTcpSocket* client)
     QByteArray data;
 
     quint8 count = client_list.size();
-
-    qDebug() << "userlistcount:" << count;
 
     data.append(count);
 
@@ -562,14 +555,13 @@ void MainWindow::on_disConnectButton_clicked()
 
         QTcpSocket *sock = m_userIdToSocket.value(userId, nullptr);
         if (!sock) {
-            qDebug() << "소켓 없음 for userId:" << userId;
             return;
         }
 
-        // 여기서 끊기
+
         sock->disconnectFromHost();
         sock->close();
-        // 이후 정리는 disconnected()에서
+
 
 }
 
