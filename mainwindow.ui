@@ -25,7 +25,7 @@
     </property>
     <layout class="QGridLayout" name="gridLayout">
      <item row="4" column="1">
-      <widget class="QTextEdit" name="SendText"/>
+      <widget class="QTextEdit" name="sendText"/>
      </item>
      <item row="0" column="0">
       <widget class="QLabel" name="LogLabel">
@@ -87,6 +87,13 @@
          <string>UserPort</string>
         </property>
        </column>
+      </widget>
+     </item>
+     <item row="0" column="2">
+      <widget class="QPushButton" name="disConnectButton">
+       <property name="text">
+        <string>연결 끊기</string>
+       </property>
       </widget>
      </item>
     </layout>

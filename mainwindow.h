@@ -59,6 +59,8 @@ private:
     void broadcastMessage(quint8 CMD, QString dataStr, QTcpSocket* excludeClient);
     void ackOrNack(QTcpSocket* client, quint8 cmd, quint8 refCMD, quint8 code);
     void userListSend(quint8 CMD, QTcpSocket* client);
+    void broadcastMessage(quint8 CMD, QByteArray data);
+
 
 signals:
     void started(int port);
@@ -76,5 +78,7 @@ private slots:
     void disconnected();
     // void onSocketError(QAbstractSocket::SocketError);
 
+    void on_SendButton_clicked();
+    void on_disConnectButton_clicked();
 };
 #endif // MAINWINDOW_H

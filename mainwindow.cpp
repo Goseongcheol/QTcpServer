@@ -13,6 +13,9 @@ MainWindow::MainWindow(const QString& ip, quint16 port, const QString& filePath,
 {
     ui->setupUi(this);
 
+    serverIp = ip;
+    serverPort = port;
+
     logFilePath = filePath;
 
     server = new QTcpServer(this);
@@ -201,8 +204,8 @@ void MainWindow::readyRead()
 
         writeLog(CMD,chatLogData,client->peerAddress().toString(), client->peerPort());
 
-        auto it = client_list.find(client);
-        const clientInfo& info = it.value();
+        // auto it = client_list.find(client);
+        // const clientInfo& info = it.value();
 
         broadcastMessage(0x12, data, client);
 
@@ -386,6 +389,38 @@ void MainWindow::broadcastMessage(quint8 CMD, QString dataStr, QTcpSocket* exclu
     }
 }
 
+//전체 접속 유저에게 메세지 보내기 브로드캐스트메세지 오버로딩
+void MainWindow::broadcastMessage(quint8 CMD, QByteArray data)
+{
+    QByteArray packet;
+    quint8 STX = 0x02;
+    quint16 len = data.size();
+    quint8 ETX = 0x03;
+
+    packet.append(STX);
+    packet.append(CMD);
+    packet.append((len >> 8) & 0xFF);
+    packet.append(len & 0xFF);
+    packet.append(data);
+
+
+    quint32 sum = CMD + ((len >> 8) & 0xFF) + (len & 0xFF);
+    for (unsigned char c : data)
+        sum += c;
+    quint8 checksum = sum % 256;
+
+    packet.append(checksum);
+    packet.append(ETX);
+
+    for (auto list = client_list.constBegin(); list != client_list.constEnd(); ++list)
+    {
+        QTcpSocket* client = list.key();
+
+        if (client->state() == QAbstractSocket::ConnectedState)
+            client->write(packet);
+    }
+}
+
 
 
 void MainWindow::ackOrNack(QTcpSocket* client, quint8 cmd, quint8 refCMD, quint8 code)
@@ -476,4 +511,65 @@ void MainWindow::userListSend(quint8 CMD, QTcpSocket* client)
 }
 
 
+
+
+void MainWindow::on_SendButton_clicked()
+{
+    QString serverName = "Server" ;
+    QByteArray nameBytes = serverName.toUtf8();
+    //name 을 16바이트 크기로 지정했기 때문에 16 바이트 넘어가면 truncate
+    if (nameBytes.size() > 16)
+    {
+        nameBytes.truncate(16);
+    }
+    else
+    {
+        //16바이트의 빈칸을 공백으로 추가
+        nameBytes.append(QByteArray(16 - nameBytes.size(), ' '));
+    }
+
+    QString chatData = ui->sendText->toPlainText();
+
+    QByteArray chatBytes = chatData.toUtf8();
+
+    QByteArray data = nameBytes + chatBytes ;
+
+
+    QString logData = QString("%1 : %2").arg(serverName,
+                                             ui->sendText->toPlainText());
+    qint8 cmd = 0x12;
+
+    broadcastMessage(cmd,data);
+
+    writeLog(cmd,logData,serverIp,serverPort);
+
+    ui-> sendText -> clear();
+}
+
+
+void MainWindow::on_disConnectButton_clicked()
+{
+
+        int row = ui->userListTableWidget->currentRow();
+        if (row < 0)
+            return;
+
+        QTableWidgetItem *idItem = ui->userListTableWidget->item(row, 0);
+        if (!idItem)
+            return;
+
+        QString userId = idItem->text().trimmed();
+
+        QTcpSocket *sock = m_userIdToSocket.value(userId, nullptr);
+        if (!sock) {
+            qDebug() << "소켓 없음 for userId:" << userId;
+            return;
+        }
+
+        // 여기서 끊기
+        sock->disconnectFromHost();
+        sock->close();
+        // 이후 정리는 disconnected()에서
+
+}
 
