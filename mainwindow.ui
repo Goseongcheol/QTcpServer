@@ -6,108 +6,188 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1077</width>
-    <height>517</height>
+    <width>677</width>
+    <height>530</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>MainWindow</string>
+   <string>메인 서버</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">background-color : 	#2f4f4f;
+</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <widget class="QWidget" name="gridLayoutWidget">
+   <widget class="QTextEdit" name="logText">
     <property name="geometry">
      <rect>
-      <x>30</x>
-      <y>10</y>
-      <width>1001</width>
-      <height>451</height>
+      <x>20</x>
+      <y>50</y>
+      <width>321</width>
+      <height>321</height>
      </rect>
     </property>
-    <layout class="QGridLayout" name="gridLayout">
-     <item row="4" column="1">
-      <widget class="QTextEdit" name="sendText"/>
-     </item>
-     <item row="0" column="0">
-      <widget class="QLabel" name="LogLabel">
-       <property name="text">
-        <string>로그</string>
-       </property>
-      </widget>
-     </item>
-     <item row="4" column="2">
-      <widget class="QPushButton" name="SendButton">
-       <property name="text">
-        <string>전송</string>
-       </property>
-      </widget>
-     </item>
-     <item row="3" column="1">
-      <widget class="QCheckBox" name="AllUserCheckBox">
-       <property name="text">
-        <string>전체 유저 선택</string>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="0" rowspan="4">
-      <widget class="QTextEdit" name="logText"/>
-     </item>
-     <item row="0" column="1">
-      <widget class="QLabel" name="ConnectUserLabel">
-       <property name="text">
-        <string>접속 유저</string>
-       </property>
-      </widget>
-     </item>
-     <item row="2" column="1">
-      <widget class="QLabel" name="CheckBoxLabel">
-       <property name="text">
-        <string>공지/메세지 전송</string>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="1" colspan="2">
-      <widget class="QTableWidget" name="userListTableWidget">
-       <column>
-        <property name="text">
-         <string>UserID</string>
-        </property>
-       </column>
-       <column>
-        <property name="text">
-         <string>UserName</string>
-        </property>
-       </column>
-       <column>
-        <property name="text">
-         <string>UserIP</string>
-        </property>
-       </column>
-       <column>
-        <property name="text">
-         <string>UserPort</string>
-        </property>
-       </column>
-      </widget>
-     </item>
-     <item row="0" column="2">
-      <widget class="QPushButton" name="disConnectButton">
-       <property name="text">
-        <string>연결 끊기</string>
-       </property>
-      </widget>
-     </item>
-    </layout>
+    <property name="styleSheet">
+     <string notr="true">color : #00bfff	;
+background-color : #1E2F31;
+border: 1px solid #008080;</string>
+    </property>
+    <property name="readOnly">
+     <bool>true</bool>
+    </property>
    </widget>
-  </widget>
-  <widget class="QMenuBar" name="menubar">
-   <property name="geometry">
-    <rect>
-     <x>0</x>
-     <y>0</y>
-     <width>1077</width>
-     <height>17</height>
-    </rect>
-   </property>
+   <widget class="QTextEdit" name="sendText">
+    <property name="geometry">
+     <rect>
+      <x>20</x>
+      <y>410</y>
+      <width>551</width>
+      <height>71</height>
+     </rect>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">color : white;
+background-color : #1E2F31;
+border: 1px solid #008080;</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="LogLabel">
+    <property name="geometry">
+     <rect>
+      <x>20</x>
+      <y>30</y>
+      <width>51</width>
+      <height>18</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>로그</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="ConnectUserLabel">
+    <property name="geometry">
+     <rect>
+      <x>350</x>
+      <y>30</y>
+      <width>211</width>
+      <height>18</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>접속 유저</string>
+    </property>
+   </widget>
+   <widget class="QTableWidget" name="userListTableWidget">
+    <property name="geometry">
+     <rect>
+      <x>350</x>
+      <y>50</y>
+      <width>301</width>
+      <height>321</height>
+     </rect>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">QTableWidget {
+    background-color: #132B2E;         
+    gridline-color: #2F5557;         
+    color: #E0E0E0;                 
+    selection-background-color: #1E3C3F; 
+    selection-color: #FFFFFF;         
+    border: 1px solid #2F5557;             
+}
+
+QHeaderView::section {
+    background-color: #163739;         
+    color: #C0CFCF;                     
+    border: 1px solid #2F5557;      
+    padding: 4px;
+}
+
+</string>
+    </property>
+    <column>
+     <property name="text">
+      <string>UserID</string>
+     </property>
+    </column>
+    <column>
+     <property name="text">
+      <string>UserName</string>
+     </property>
+    </column>
+    <column>
+     <property name="text">
+      <string>UserIP</string>
+     </property>
+    </column>
+    <column>
+     <property name="text">
+      <string>UserPort</string>
+     </property>
+    </column>
+   </widget>
+   <widget class="QLabel" name="CheckBoxLabel">
+    <property name="geometry">
+     <rect>
+      <x>20</x>
+      <y>380</y>
+      <width>81</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>메세지 전송</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="SendButton">
+    <property name="geometry">
+     <rect>
+      <x>580</x>
+      <y>410</y>
+      <width>71</width>
+      <height>71</height>
+     </rect>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">QPushButton {
+    background-color: qlineargradient(
+        x1:0, y1:0, x2:0, y2:1,
+        stop:0 #1E3C3F, stop:1 #0F2326
+    );                           
+    border-radius: 10px;     
+	border: 1px solid rgb(0,0,0);
+}
+</string>
+    </property>
+    <property name="text">
+     <string>전송</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="disConnectButton">
+    <property name="geometry">
+     <rect>
+      <x>590</x>
+      <y>10</y>
+      <width>61</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">QPushButton {
+    background-color: qlineargradient(
+        x1:0, y1:0, x2:0, y2:1,
+        stop:0 #1E3C3F, stop:1 #0F2326
+    );                                        
+    border-radius: 10px;     
+	border: 1px solid rgb(0,0,0);
+
+}
+</string>
+    </property>
+    <property name="text">
+     <string>연결 끊기</string>
+    </property>
+   </widget>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
  </widget>

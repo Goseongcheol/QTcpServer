@@ -6,6 +6,7 @@
 #include <QFileInfo>
 #include <QDir>
 #include <QTcpSocket>
+#include <QShortcut>
 
 MainWindow::MainWindow(const QString& ip, quint16 port, const QString& filePath, QWidget *parent)
     : QMainWindow(parent)
@@ -27,6 +28,12 @@ MainWindow::MainWindow(const QString& ip, quint16 port, const QString& filePath,
     } else {
         writeLog(0,"server fail",ip, port);
     }
+
+
+    new QShortcut(QKeySequence(Qt::Key_Enter), this, [this]{
+        on_SendButton_clicked();
+    });
+
 }
 
 MainWindow::~MainWindow()
