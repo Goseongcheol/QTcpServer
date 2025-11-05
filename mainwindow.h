@@ -23,9 +23,6 @@ public:
     MainWindow(const QString& ip, quint16 port, const QString& filePath, QWidget *parent = nullptr);
     ~MainWindow();
 
-    void sendToAll(const QByteArray& msg);
-    bool sendTo(QTcpSocket* client, const QByteArray& msg);
-
 private:
     Ui::MainWindow *ui = nullptr;
 
@@ -47,9 +44,6 @@ private:
     //소캣과 행 매치
     QHash<QTcpSocket*, int> m_rowOfSocket;
 
-
-    bool startServer(const QString& ip, quint16 port);
-    void stopServer();
     void writeLog(quint8 cmd, QString data, QString clientIp, quint16 clientPort);
     QString logFilePath;
     void addUserRow(QTcpSocket* client, const clientInfo& info);
@@ -63,21 +57,15 @@ private:
 
 
 signals:
-    void started(int port);
-    void stopped();
     void clientConnected(QTcpSocket* client, const QString& peer);
     void clientDisconnected(QTcpSocket* client, const QString& peer, const QString& reason);
     void messageReceived(QTcpSocket* client, const QByteArray& line);
-    void errorOccurred(const QString& err);
 
 
 private slots:
     void newConnection();
-    // 프로토콜 처리
     void readyRead();
     void disconnected();
-    // void onSocketError(QAbstractSocket::SocketError);
-
     void on_SendButton_clicked();
     void on_disConnectButton_clicked();
 };

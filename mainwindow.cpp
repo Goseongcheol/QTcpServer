@@ -38,12 +38,10 @@ MainWindow::~MainWindow()
 void MainWindow::newConnection()
 {
     QTcpSocket *client = server->nextPendingConnection();
-    // 클라이언트 연결
     connect(client, &QTcpSocket::readyRead, this, &MainWindow::readyRead);
     connect(client, &QTcpSocket::disconnected, this, &MainWindow::disconnected);
 }
 
-// 프로토콜 처리
 void MainWindow::readyRead()
 {
     QTcpSocket *client = qobject_cast<QTcpSocket*>(sender());
@@ -57,10 +55,6 @@ void MainWindow::readyRead()
     quint8 lenL = quint8(packet[3]);
     quint16 LEN = (quint16(lenH) << 8) | lenL;
 
-    // CMD 가 알려진 CMD가 아니라면
-    // if()
-
-    // 패킷 형식(사이즈로) 검증
     if (packet.size() < 1 + 1 + 2 + LEN + 1 + 1) {
         ackOrNack(client,0x09,0x01,0x07);
         return;
@@ -70,30 +64,26 @@ void MainWindow::readyRead()
     quint8 checksum = quint8(packet[4 + LEN]);
     quint8 ETX      = quint8(packet[5 + LEN]);
 
-    // 체크섬 계산 (클라이언트와 동일)
     quint32 sum = CMD + lenH + lenL;
     for (unsigned char c : data)
         sum += c;
     quint8 calChecksum = quint8(sum % 256);
 
-    // STX, ETX 검증
     if(STX != 2 || ETX != 3){
-        //nack stx,erx 오류 6번으로
         ackOrNack(client,0x09,0x01,0x06);
         return;
     }
-    // 받은 checksum과 계산한 checksum 확인하기
+
     if(checksum != calChecksum)
     {
-        //nack - checksum 오류
         ackOrNack(client,0x09,0x01,0x01);
         return;
     }
+
     // CMD 에 맞게 따로 처리
     switch (CMD){
     // CONNECT (0x01)
     case 1 :{
-        // C++ 에서는 switch case 안에 변수 선언을 하면 다음 case로 넘어갈떄 변수초기화 오류가 발생할수있어서  case문을 {} 묶지 않으면 사용 불가하게 만듬
         qDebug() << "connect client info";
         qDebug() << client;
         qDebug() << data;
@@ -120,7 +110,6 @@ void MainWindow::readyRead()
         m_userIdToSocket.insert(ID, client);
         addUserRow(client, info);
 
-        //USER_JOIN 보내기
         QByteArray idBytes = ID.toUtf8();
         if (idBytes.size() > 4) idBytes.truncate(4);
         else idBytes.append(QByteArray(4 - idBytes.size(), ' '));
@@ -142,13 +131,10 @@ void MainWindow::readyRead()
 
         ackOrNack(client,0x08,0x01,0x00);
 
-        //ACK or NACK 전송 이후 클라이언트에서 패킷을 잘 못 받아서 대기 시간(임시용) 나중에 정확한 해결방법 추가 예정
         client->waitForBytesWritten(200);
 
-        //USER_JOIN
         broadcastMessage(0x03, userJoinData, client);
 
-        // 혹시 몰라서 여기도 추가
         client->waitForBytesWritten(200);
 
         writeLog(CMD,loginLogData,client->peerAddress().toString(), client->peerPort());
@@ -160,6 +146,7 @@ void MainWindow::readyRead()
         break;
     }
     case 8 :
+    // ACK[0X08]
     {
         quint8 ackCMD = quint8(packet[4]);
         QString ackMessage = "해당 CMD 성공";
@@ -167,6 +154,7 @@ void MainWindow::readyRead()
         break;
     }
     case 9 :
+    // NACK[0X09]
     {
         quint8 nackCMD = quint8(packet[4]);
         quint8 nackErrorCode = quint8(packet[5]);
@@ -198,33 +186,27 @@ void MainWindow::readyRead()
 
     }
     case 18 :
+    // CHAT[0X12]
     {
 
         QString ID = data.mid(0,16).trimmed();
         QString MSG = data.mid(16);
-
         QString chatLogData = QString("%1:%2").arg(ID,MSG);
-
         writeLog(CMD,chatLogData,client->peerAddress().toString(), client->peerPort());
-
-        broadcastMessage(0x12, data, client);
-
+        broadcastMessage(0x12, data, client);\
         break;
     }
     default :
     {
         break;
     }
-
     }
 }
 
-// qmap과 qhash에 매핑된 소켓 제거 + userleave 메세지 브로드캐스트 + 로그 출력
 void MainWindow::disconnected()
 {
     QTcpSocket *client = qobject_cast<QTcpSocket*>(sender());
     if (!client) return;
-
 
     auto it = client_list.find(client);
     if (it != client_list.end()) {
@@ -234,6 +216,7 @@ void MainWindow::disconnected()
         QString userLeaveLog = QString ("%1|%2 USER LOGOUT!").arg(userId,userName);
 
         broadcastMessage(CMD, userId, client);
+
         writeLog(CMD,userLeaveLog,client->peerAddress().toString(), client->peerPort());
 
         m_userIdToSocket.remove(userId);
@@ -269,11 +252,11 @@ void MainWindow::writeLog(quint8 cmd, QString data, QString clientIp, quint16 cl
     }
 
     QDateTime currentDateTime = QDateTime::currentDateTime();
-    QString logTime = currentDateTime.toString("[yyyy-MM-dd HH:mm:ss]"); //폴더에 날짜가 표시 되지만 프로그램을 며칠동안 종료하지 않을 경우에 날짜를 명확하게 확인하려고 yyyy-MM-dd 표시
+    QString logTime = currentDateTime.toString("[yyyy-MM-dd HH:mm:ss]");
     QString uiLogData = QString("%1\n[%2:%3]\n%4 %5")
                             .arg(logTime,
                                  clientIp)
-                            .arg(clientPort) // port가 quint16 으로 작성했었음 오류 나옴
+                            .arg(clientPort)
                             .arg(logCmd,
                                  data);
 
@@ -286,7 +269,6 @@ void MainWindow::writeLog(quint8 cmd, QString data, QString clientIp, quint16 cl
 
     ui->logText->append(uiLogData);
 
-    //로그파일 열고 적기
     QFileInfo fileInfo(logFilePath);
     QDir dir;
     dir.mkpath(fileInfo.path());
@@ -295,27 +277,16 @@ void MainWindow::writeLog(quint8 cmd, QString data, QString clientIp, quint16 cl
 
     if (File.open(QFile::WriteOnly | QFile::Append | QFile::Text))
     {
-        //log에 데이터 형식 가공해서 바꿔 넣기
         QTextStream SaveFile(&File);
         SaveFile << logData << "\n";
         File.close();
     }
     else
     {
-        //error 처리
+        qDebug() << "logfile error" ;
     }
 }
 
-//유저테이블 초기화
-void MainWindow::initUserTable()
-{
-    auto *tw = ui->userListTableWidget;
-    tw->setColumnCount(4); // UserID, UserName, UserIP, UserPort
-
-    tw->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
-    tw->setSelectionBehavior(QAbstractItemView::SelectRows);
-    tw->setEditTriggers(QAbstractItemView::NoEditTriggers);
-}
 
 void MainWindow::addUserRow(QTcpSocket* client, const clientInfo& info)
 {
@@ -334,12 +305,9 @@ void MainWindow::addUserRow(QTcpSocket* client, const clientInfo& info)
         it->setTextAlignment(Qt::AlignCenter);
     }
 
-    // 소켓→행 매핑 저장 행에서 소켓 정보를 찾아 매칭하기위해서 ( 선택 유저 메세지 전송 하기위해 아직 미구현 )
     m_rowOfSocket.insert(client, row);
 }
 
-
-//유저 지우기
 void MainWindow::removeUserRow(QTcpSocket* client)
 {
     auto it = m_rowOfSocket.find(client);
@@ -353,7 +321,6 @@ void MainWindow::removeUserRow(QTcpSocket* client)
         if (j.value() > row) j.value() -= 1;
 }
 
-// 전체 소켓 브로드 캐스트 메세지 보내기
 void MainWindow::broadcastMessage(quint8 CMD, QString dataStr, QTcpSocket* excludeClient)
 {
     QByteArray data = dataStr.toUtf8();
@@ -390,7 +357,6 @@ void MainWindow::broadcastMessage(quint8 CMD, QString dataStr, QTcpSocket* exclu
     }
 }
 
-//전체 접속 유저에게 메세지 보내기 브로드캐스트메세지 오버로딩
 void MainWindow::broadcastMessage(quint8 CMD, QByteArray data)
 {
     QByteArray packet;
@@ -448,13 +414,11 @@ void MainWindow::ackOrNack(QTcpSocket* client, quint8 cmd, quint8 refCMD, quint8
 
     quint8 checksum = sum % 256;
     packet.append(checksum);
-    packet.append(ETX); // ETX
+    packet.append(ETX);
 
     client->write(packet);
-    // client->flush();
 }
 
-// 전체 유저 리스트 해당 클라이언트에게 보내기
 void MainWindow::userListSend(quint8 CMD, QTcpSocket* client)
 {
     QByteArray packet;
@@ -517,14 +481,12 @@ void MainWindow::on_SendButton_clicked()
 {
     QString serverName = "Server" ;
     QByteArray nameBytes = serverName.toUtf8();
-    //name 을 16바이트 크기로 지정했기 때문에 16 바이트 넘어가면 truncate
     if (nameBytes.size() > 16)
     {
         nameBytes.truncate(16);
     }
     else
     {
-        //16바이트의 빈칸을 공백으로 추가
         nameBytes.append(QByteArray(16 - nameBytes.size(), ' '));
     }
 
@@ -564,10 +526,6 @@ void MainWindow::on_disConnectButton_clicked()
         if (!sock) {
             return;
         }
-
-        qDebug() << "disconnect client info";
-        qDebug() << sock;
-        qDebug() << userId;
 
         sock->disconnectFromHost();
 }
